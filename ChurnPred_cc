@@ -1,0 +1,124 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+import plotly.express as px
+
+telco_data = pd.read_csv('Telco-Customer-Churn.csv')
+
+telco_data.head()
+
+telco_data.shape
+
+telco_data.describe()
+
+# Checking Null values
+telco_data.notnull().sum()
+
+%matplotlib inline
+
+telco_hist = px.histogram(telco_data, x='gender',color='Churn',marginal='box', color_discrete_sequence = ['red','grey'])
+telco_hist.update_layout(bargap=0.2)
+
+plt.bar(telco_data['gender'],telco_data['Churn'])
+
+telco_data.hist(bins = 30, figsize=(20,15))
+
+sns.pairplot(telco_data)
+
+#Removing gender, customerID,tenture they are not usefull
+col = ['gender','customerID','tenure']
+telco_data = telco_data.drop(col,axis = 1)
+
+sns.pairplot(telco_data)
+
+telco_data.head()
+
+telco_data['TotalCharges'].notnull().sum()
+
+telco_data['MonthlyCharges'].describe()
+
+telco_data['TotalCharges'].describe()
+#the datatype of the TotalCharges is Object so we will changec that
+
+#due to string(" ") at 488 position you can not change the TotalCharges into Int
+#so we will be removing/replacing that string which is --> " "
+telco_data['TotalCharges'] = telco_data['TotalCharges'].replace(" ",np.nan)
+telco_data['TotalCharges'] = pd.to_numeric(telco_data['TotalCharges'], errors = 'coerce') # coerce will replace all the non-numeric values with NaN
+#dropping all the rows in which there is a null value
+telco_data = telco_data.dropna(how = "any", axis = 0) #removing all the rows which have null value in it
+
+telco_data['TotalCharges'].describe()
+
+telco_data.notnull().sum()
+
+#TotalCharges has some null values in it
+telco_data.isnull().sum()
+
+telco_data['Churn'].describe()
+
+for i, predictor in enumerate(telco_data.drop(columns=['Churn', 'TotalCharges', 'MonthlyCharges'])):
+    ax = sns.countplot(data =telco_data, x = predictor, hue='Churn')
+    if predictor == "PaymentMethod": 
+        ax.set_xticklabels(ax.get_xticklabels(), fontsize=7)
+        plt.tight_layout()
+        plt.show()
+    else:
+        plt.tight_layout()
+        plt.show()
+
+#converting Yes as 1 and No as 0
+telco_data["Churn"] = telco_data["Churn"].replace(['Yes','No'],[1,0])
+
+telco_data
+
+telco_data_dummies = pd.get_dummies(telco_data)
+telco_data_dummies
+
+churn_corr_matrix = telco_data_dummies.corr()
+churn_corr_matrix['Churn'].sort_values(ascending = False).plot(kind='bar',figsize = (15,10))
+
+churn_corr_matrix['Churn'].sort_values(ascending = False)
+
+x = telco_data_dummies.drop('Churn',axis = 1)
+x
+
+y = telco_data_dummies['Churn']
+y
+
+x.shape
+
+y.shape
+
+y.value_counts()
+
+from imblearn.over_sampling import SMOTE
+smote = SMOTE(random_state=0)
+x_resampled_smote, y_resampled_smote = smote.fit_resample(x,y)
+
+y_resampled_smote.value_counts()
+
+x_resampled_smote
+
+y_resampled_smote.notnull().sum()
+
+x_resampled_smote.notnull().sum()
+
+from sklearn.linear_model import LogisticRegression
+#checking on imbalance data
+x_train,x_test,y_train,y_test = train_test_split(x,y,test_size=0.2,random_state=42)
+LogReg = LogisticRegression(solver='lbfgs', max_iter=400)
+LogReg.fit(x_train,y_train)
+
+y_pred = LogReg.predict(x_test)
+from sklearn.metrics import accuracy_score
+accuracy_score(y_test,y_pred)
+
+#checking on balanced data
+x_smote_train,x_smote_test,y_smote_train,y_smote_test = train_test_split(x_resampled_smote,y_resampled_smote,test_size=0.2,random_state=42)
+
+LogReg.fit(x_smote_train,y_smote_train)
+
+y_smote_pred = LogReg.predict(x_smote_test)
+accuracy_score(y_smote_test,y_smote_pred)
